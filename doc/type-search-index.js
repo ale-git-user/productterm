@@ -1,0 +1,1 @@
+typeSearchIndex = [{"p":"com.termmed.terms","l":"NewTermsGenerator"},{"p":"com.termmed.terms","l":"NewTermsGenerator.ConceptTerm"},{"p":"com.termmed.terms","l":"NewTermsGenerator.Preferreds"},{"p":"com.termmed.util","l":"TClosure"}]
