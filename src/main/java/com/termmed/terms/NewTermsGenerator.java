@@ -1,5 +1,6 @@
 package com.termmed.terms;
 
+import com.sun.org.apache.bcel.internal.generic.InstructionComparator;
 import com.termmed.util.TClosure;
 
 import java.io.*;
@@ -29,7 +30,7 @@ public class NewTermsGenerator {
     private static final String ENTIRE_TERM_INSENSITIVE = "900000000000448009" ;
     private static final String DOSE_PHARMACEUTICAL="736542009";
     private final String rels;
-    private HashMap<String, List<String>> hCptList;
+    private HashMap<String, List<ExtendedLineString>> hCptList;
     private HashMap<String, String> hCptFSN;
     private String outDescFile;
     private String FileBase;
@@ -46,6 +47,7 @@ public class NewTermsGenerator {
     private String outTermsReview;
 
     public static void main(String[] args){
+
         String FileBase="{path to file with product data -csv or txt-}";
         String descriptions="{path to Snomed description file in RF2}";
         String language="{path to Snomed language file in RF2}";
@@ -110,7 +112,7 @@ public class NewTermsGenerator {
 
         String line;
         String[] spl;
-        hCptList = new HashMap<String, List<String>>();
+        hCptList = new HashMap<String, List<ExtendedLineString>>();
         hCptFSN = new HashMap<String, String>();
         hCptPref=new HashMap<Long,Preferreds>();
         String boss;
@@ -123,11 +125,11 @@ public class NewTermsGenerator {
             spl = line.split("\t", -1);
             String cid = spl[CONCEPTID];
 
-            List<String> lst = hCptList.get(cid);
+            List<ExtendedLineString> lst = hCptList.get(cid);
             if (lst == null) {
-                lst = new ArrayList<String>();
+                lst = new ArrayList<ExtendedLineString>();
             }
-            lst.add(line);
+            lst.add(new ExtendedLineString(line));
             hCptList.put(cid, lst);
 
             hCptFSN.put(cid, spl[FSN]);
@@ -185,7 +187,7 @@ public class NewTermsGenerator {
 
         Long newDescId;
         for (String cid:hCptList.keySet()){
-            List<String> lst=hCptList.get(cid);
+            List<ExtendedLineString> lst=hCptList.get(cid);
 
             String[] terms= getNewTerms(lst);
 
@@ -274,7 +276,7 @@ public class NewTermsGenerator {
         return gDescriptionId;
     }
 
-    private String[] getNewTerms(List<String> lst) {
+    private String[] getNewTerms(List<ExtendedLineString> lst) {
         String[] retTerms=new String[4];
         String fsn=null;
         String prefUS=null;
@@ -283,20 +285,20 @@ public class NewTermsGenerator {
         String[] spl;
 
         if (lst.size()==1){
-            spl=lst.get(0).split("\t",-1);
+            spl=lst.get(0).getLine().split("\t",-1);
             if (spl[INGREDIENT].equals(spl[BOSS])) {
                 fsn = "Product containing only " + unCapitalize(removeSemtag(getTerm(spl[BOSS]))) + " " +
                         spl[NMRTOR_VAL] + " " + unCapitalize(removeSemtag(getTerm(spl[NMRTOR_UNIT]))) + "/1 each " + unCapitalize(removeSemtag(getTerm(spl[DOSE_FORM])));
-                prefUS = "Product containing only " + unCapitalize(getPreferred(spl[BOSS],"us")) + " " +
+                prefUS = capitalize(getPreferred(spl[BOSS],"us")) + " " +
                         spl[NMRTOR_VAL] + " " + unCapitalize(getPreferred(spl[NMRTOR_UNIT],"us")) + " " + unCapitalize(getPreferred(spl[DOSE_FORM],"us"));
-                prefGB = "Product containing only " + unCapitalize(getPreferred(spl[BOSS],"gb")) + " " +
+                prefGB = capitalize(getPreferred(spl[BOSS],"gb")) + " " +
                         spl[NMRTOR_VAL] + " " + unCapitalize(getPreferred(spl[NMRTOR_UNIT],"gb")) + " " + unCapitalize(getPreferred(spl[DOSE_FORM],"gb"));
             } else {
                 fsn = "Product containing only " + unCapitalize(removeSemtag(getTerm(spl[BOSS]))) + " (as " + unCapitalize(removeSemtag(getTerm(spl[INGREDIENT]))) + ") " +
                         spl[NMRTOR_VAL] + " " + unCapitalize(removeSemtag(getTerm(spl[NMRTOR_UNIT]))) + "/1 each " + unCapitalize(removeSemtag(getTerm(spl[DOSE_FORM])));
-                prefUS = "Product containing only " + unCapitalize(getPreferred(spl[BOSS],"us")) + " (as " + unCapitalize(getPreferred(spl[INGREDIENT],"us")) + ") " +
+                prefUS = capitalize(getPreferred(spl[BOSS],"us")) + " (as " + unCapitalize(getPreferred(spl[INGREDIENT],"us")) + ") " +
                         spl[NMRTOR_VAL] + " " + unCapitalize(getPreferred(spl[NMRTOR_UNIT],"us")) + " " + unCapitalize(getPreferred(spl[DOSE_FORM],"us"));
-                prefGB = "Product containing only " + unCapitalize(getPreferred(spl[BOSS],"gb")) + " (as " + unCapitalize(getPreferred(spl[INGREDIENT],"gb")) + ") " +
+                prefGB = capitalize(getPreferred(spl[BOSS],"gb")) + " (as " + unCapitalize(getPreferred(spl[INGREDIENT],"gb")) + ") " +
                         spl[NMRTOR_VAL] + " " + unCapitalize(getPreferred(spl[NMRTOR_UNIT],"gb")) + " " + unCapitalize(getPreferred(spl[DOSE_FORM],"gb"));
 
             }
@@ -305,34 +307,29 @@ public class NewTermsGenerator {
         }else {
             boolean first=true;
             String doseform="";
-            for (String line : lst) {
-
+            Collections.sort(lst);
+            for (ExtendedLineString extendedLine : lst) {
+                String line=extendedLine.getLine();
                 spl = line.split("\t", -1);
                 if (first){
-                    fsn = "Product containing only ";
-                    prefUS = "Product containing only ";
-                    prefGB = "Product containing only ";
+                    fsn = "Product containing only " + unCapitalize(removeSemtag(getTerm(spl[BOSS]))) + " " ;
+                    prefUS = capitalize(getPreferred(spl[BOSS], "us")) + " ";
+                    prefGB = capitalize(getPreferred(spl[BOSS], "gb")) + " ";
                     doseform=unCapitalize(removeSemtag(getTerm(spl[DOSE_FORM])));
                     first=false;
                 }else{
-                    fsn +=" and ";
+                    fsn +=" and " + unCapitalize(removeSemtag(getTerm(spl[BOSS]))) + " " ;
+                    prefUS +=" and " + unCapitalize(getPreferred(spl[BOSS], "us")) + " ";
+                    prefGB +=" and " + unCapitalize(getPreferred(spl[BOSS], "gb")) + " ";
                 }
-                if (spl[INGREDIENT].equals(spl[BOSS])) {
-                    fsn += unCapitalize(removeSemtag(getTerm(spl[BOSS]))) + " " +
-                            spl[NMRTOR_VAL] + " " + unCapitalize(removeSemtag(getTerm(spl[NMRTOR_UNIT])));
-                    prefUS += unCapitalize(getPreferred(spl[BOSS],"us")) + " " +
-                            spl[NMRTOR_VAL] + " " + unCapitalize(getPreferred(spl[NMRTOR_UNIT],"us")) ;
-                    prefGB += unCapitalize(getPreferred(spl[BOSS],"gb")) + " " +
-                            spl[NMRTOR_VAL] + " " + unCapitalize(getPreferred(spl[NMRTOR_UNIT],"gb")) ;
-                } else {
-                    fsn += unCapitalize(removeSemtag(getTerm(spl[BOSS]))) + " (as " + unCapitalize(removeSemtag(getTerm(spl[INGREDIENT]))) + ") " +
-                            spl[NMRTOR_VAL] + " " + unCapitalize(removeSemtag(getTerm(spl[NMRTOR_UNIT])));
-                    prefUS += unCapitalize(getPreferred(spl[BOSS],"us")) + " (as " + unCapitalize(getPreferred(spl[INGREDIENT],"us")) + ") " +
-                            spl[NMRTOR_VAL] + " " + unCapitalize(getPreferred(spl[NMRTOR_UNIT],"us")) ;
-                    prefGB += unCapitalize(getPreferred(spl[BOSS],"gb")) + " (as " + unCapitalize(getPreferred(spl[INGREDIENT],"gb")) + ") " +
-                            spl[NMRTOR_VAL] + " " + unCapitalize(getPreferred(spl[NMRTOR_UNIT],"gb")) ;
-
+                if (!spl[INGREDIENT].equals(spl[BOSS])) {
+                    fsn += "(as " + unCapitalize(removeSemtag(getTerm(spl[INGREDIENT]))) + ") " ;
+                    prefUS += "(as " + unCapitalize(getPreferred(spl[INGREDIENT],"us")) + ") " ;
+                    prefGB += "(as " + unCapitalize(getPreferred(spl[INGREDIENT],"gb")) + ") " ;
                 }
+                fsn += spl[NMRTOR_VAL] + " " + unCapitalize(removeSemtag(getTerm(spl[NMRTOR_UNIT])));
+                prefUS += spl[NMRTOR_VAL] + " " + unCapitalize(getPreferred(spl[NMRTOR_UNIT],"us")) ;
+                prefGB += spl[NMRTOR_VAL] + " " + unCapitalize(getPreferred(spl[NMRTOR_UNIT],"gb")) ;
             }
             fsn +=  "/1 each " + doseform;
             prefUS +=  " " + doseform;
@@ -374,7 +371,7 @@ public class NewTermsGenerator {
         return removeSemtag(definition);
     }
 
-    private String getTerm(String definition) {
+    protected String getTerm(String definition) {
         if (definition.trim().length()>1 ){
             int pos=definition.indexOf("|");
             if (pos>-1) {
@@ -425,7 +422,10 @@ public class NewTermsGenerator {
     }
 
     private String capitalize(String term) {
-        return term.substring(0, 1).toUpperCase() + term.substring(1);
+        if (term.length()>0) {
+            return term.substring(0, 1).toUpperCase() + term.substring(1);
+        }
+        return "";
     }
 
     private String removeSemtag(String term) {
@@ -556,5 +556,34 @@ public class NewTermsGenerator {
         BufferedReader rbr = new BufferedReader(risr);
         return rbr;
 
+    }
+
+    class ExtendedLineString implements Comparable {
+
+        public String getComparableData() {
+            return comparableData;
+        }
+
+        private final String comparableData;
+
+        public String getLine() {
+            return line;
+        }
+
+        String line;
+        public ExtendedLineString( String line){
+            this.line=line;
+            String []spl=line.split("\t",-1);
+            if (spl.length>BOSS && spl[BOSS]!=null) {
+                comparableData = getTerm(spl[BOSS]);
+            }else{
+                comparableData="";
+            }
+        }
+
+        public int compareTo(Object o) {
+            ExtendedLineString otherLine=(ExtendedLineString)o;
+            return this.comparableData.compareTo(otherLine.getComparableData());
+        }
     }
 }
