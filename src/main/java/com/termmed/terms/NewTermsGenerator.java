@@ -29,6 +29,7 @@ public class NewTermsGenerator {
     private static final String CORE_MODULE = "900000000000207008";
     private static final String ENTIRE_TERM_INSENSITIVE = "900000000000448009" ;
     private static final String DOSE_PHARMACEUTICAL="736542009";
+    private static final String UNIT ="258666001" ;
     private final String rels;
     private HashMap<String, List<ExtendedLineString>> hCptList;
     private HashMap<String, String> hCptFSN;
@@ -44,6 +45,7 @@ public class NewTermsGenerator {
     private String outLangFile;
     private Long gDescriptionId;
     private HashMap<String, String> dosePharmaTerms;
+    private HashMap<String, String> unitTerms;
     private String outTermsReview;
 
     public static void main(String[] args){
@@ -95,7 +97,7 @@ public class NewTermsGenerator {
 
         TClosure tClos=new TClosure(rels);
         dosePharmaTerms =getDescendantDescriptions(tClos,descriptions,DOSE_PHARMACEUTICAL);
-
+        unitTerms=getDescendantDescriptions(tClos,descriptions,UNIT);
         dataRetrieve();
 
         sendToRF2();
@@ -142,9 +144,18 @@ public class NewTermsGenerator {
             if (ingrd!=null) {
                 hCptPref.put(Long.parseLong(ingrd), null);
             }
-            nmrtorUnit=getId(spl[NMRTOR_UNIT]);
-            if (nmrtorUnit!=null) {
-                hCptPref.put(Long.parseLong(nmrtorUnit), null);
+            if (spl[NMRTOR_UNIT]!=null && !spl[NMRTOR_UNIT].trim().toLowerCase().contains("microgram")) {
+                nmrtorUnit = getId(spl[NMRTOR_UNIT]);
+                if (nmrtorUnit != null) {
+                    hCptPref.put(Long.parseLong(nmrtorUnit), null);
+                } else {
+                    nmrtorUnit = getUnitData(spl[NMRTOR_UNIT]);
+                    if (nmrtorUnit != null) {
+                        hCptPref.put(Long.parseLong(nmrtorUnit), null);
+                    } else {
+                        System.out.println("Unit not found:" + spl[NMRTOR_UNIT]);
+                    }
+                }
             }
             doseForm=getId(spl[DOSE_FORM]);
             if (doseForm!=null) {
@@ -172,6 +183,15 @@ public class NewTermsGenerator {
 
         }
         return doseId;
+    }
+    private String getUnitData(String term) {
+        String unitId=null;
+        if (!term.trim().equals("")){
+            term=term.toLowerCase().trim();
+            unitId=unitTerms.get(term);
+
+        }
+        return unitId;
     }
 
     private void sendToRF2() throws IOException {
@@ -286,6 +306,7 @@ public class NewTermsGenerator {
 
         if (lst.size()==1){
             spl=lst.get(0).getLine().split("\t",-1);
+
             if (spl[INGREDIENT].equals(spl[BOSS])) {
                 fsn = "Product containing only " + unCapitalize(removeSemtag(getTerm(spl[BOSS]))) + " " +
                         spl[NMRTOR_VAL] + " " + unCapitalize(removeSemtag(getTerm(spl[NMRTOR_UNIT]))) + "/1 each " + unCapitalize(removeSemtag(getTerm(spl[DOSE_FORM])));
@@ -352,7 +373,13 @@ public class NewTermsGenerator {
     private String getPreferred(String definition, String lang) {
         if (definition!=null) {
             String id=getId(definition);
-            if (id!=null) {
+            if (id==null) {
+                id = getDoseData(definition);
+                if (id == null) {
+                    id = getUnitData(definition);
+                }
+            }
+            if (id!=null){
                 try {
                     Preferreds prefs = hCptPref.get(Long.parseLong(id));
                     if (prefs != null) {
