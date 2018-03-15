@@ -131,7 +131,8 @@ public class NewTermsGenerator {
             if (lst == null) {
                 lst = new ArrayList<ExtendedLineString>();
             }
-            lst.add(new ExtendedLineString(line));
+
+            lst.add(new ExtendedLineString(line,"fsn"));
             hCptList.put(cid, lst);
 
             hCptFSN.put(cid, spl[FSN]);
@@ -329,27 +330,54 @@ public class NewTermsGenerator {
             boolean first=true;
             String doseform="";
             Collections.sort(lst);
+            String cid="";
             for (ExtendedLineString extendedLine : lst) {
                 String line=extendedLine.getLine();
                 spl = line.split("\t", -1);
+                cid=spl[CONCEPTID].trim();
                 if (first){
                     fsn = "Product containing only " + unCapitalize(removeSemtag(getTerm(spl[BOSS]))) + " " ;
-                    prefUS = capitalize(getPreferred(spl[BOSS], "us")) + " ";
-                    prefGB = capitalize(getPreferred(spl[BOSS], "gb")) + " ";
                     doseform=unCapitalize(removeSemtag(getTerm(spl[DOSE_FORM])));
                     first=false;
                 }else{
                     fsn +=" and " + unCapitalize(removeSemtag(getTerm(spl[BOSS]))) + " " ;
-                    prefUS +=" and " + unCapitalize(getPreferred(spl[BOSS], "us")) + " ";
-                    prefGB +=" and " + unCapitalize(getPreferred(spl[BOSS], "gb")) + " ";
                 }
                 if (!spl[INGREDIENT].equals(spl[BOSS])) {
                     fsn += "(as " + unCapitalize(removeSemtag(getTerm(spl[INGREDIENT]))) + ") " ;
-                    prefUS += "(as " + unCapitalize(getPreferred(spl[INGREDIENT],"us")) + ") " ;
-                    prefGB += "(as " + unCapitalize(getPreferred(spl[INGREDIENT],"gb")) + ") " ;
                 }
                 fsn += spl[NMRTOR_VAL] + " " + unCapitalize(removeSemtag(getTerm(spl[NMRTOR_UNIT])));
+            }
+
+            List<ExtendedLineString>sortedUSPrf=getSortedByTermType(lst, "us");
+            first=true;
+            for (ExtendedLineString extendedLine : sortedUSPrf) {
+                String line=extendedLine.getLine();
+                spl = line.split("\t", -1);
+                if (first){
+                    prefUS = capitalize(getPreferred(spl[BOSS], "us")) + " ";
+                    first=false;
+                }else{
+                    prefUS +=" and " + unCapitalize(getPreferred(spl[BOSS], "us")) + " ";
+                }
+                if (!spl[INGREDIENT].equals(spl[BOSS])) {
+                    prefUS += "(as " + unCapitalize(getPreferred(spl[INGREDIENT],"us")) + ") " ;
+                }
                 prefUS += spl[NMRTOR_VAL] + " " + unCapitalize(getPreferred(spl[NMRTOR_UNIT],"us")) ;
+            }
+            List<ExtendedLineString>sortedGBPrf=getSortedByTermType(lst, "gb");
+            first=true;
+            for (ExtendedLineString extendedLine : sortedGBPrf) {
+                String line=extendedLine.getLine();
+                spl = line.split("\t", -1);
+                if (first){
+                    prefGB = capitalize(getPreferred(spl[BOSS], "gb")) + " ";
+                    first=false;
+                }else{
+                    prefGB +=" and " + unCapitalize(getPreferred(spl[BOSS], "gb")) + " ";
+                }
+                if (!spl[INGREDIENT].equals(spl[BOSS])) {
+                    prefGB += "(as " + unCapitalize(getPreferred(spl[INGREDIENT],"gb")) + ") " ;
+                }
                 prefGB += spl[NMRTOR_VAL] + " " + unCapitalize(getPreferred(spl[NMRTOR_UNIT],"gb")) ;
             }
             fsn +=  "/1 each " + doseform;
@@ -370,7 +398,15 @@ public class NewTermsGenerator {
         return retTerms;
     }
 
-    private String getPreferred(String definition, String lang) {
+    private List<ExtendedLineString> getSortedByTermType(List<ExtendedLineString> lst, String termType) {
+        for (ExtendedLineString extendedLine: lst){
+            extendedLine.setCompareTermType(termType);
+        }
+        Collections.sort(lst);
+        return lst;
+    }
+
+    protected String getPreferred(String definition, String lang) {
         if (definition!=null) {
             String id=getId(definition);
             if (id==null) {
@@ -587,30 +623,45 @@ public class NewTermsGenerator {
 
     class ExtendedLineString implements Comparable {
 
-        public String getComparableData() {
-            return comparableData;
+        private final String boss;
+        private String compareTermType;
+        private String comparableData;
+
+        public void setCompareTermType(String compareTermType) {
+            this.compareTermType = compareTermType;
         }
 
-        private final String comparableData;
+        public String getComparableData() {
+            if (compareTermType.equals("us")){
+                return getPreferred(boss,"us");
+            }
+            if (compareTermType.equals("gb")){
+                return getPreferred(boss,"gb");
+            }
+            return comparableData;
+        }
 
         public String getLine() {
             return line;
         }
 
         String line;
-        public ExtendedLineString( String line){
+        public ExtendedLineString( String line, String compareTermType){
             this.line=line;
+            this.compareTermType=compareTermType;
             String []spl=line.split("\t",-1);
             if (spl.length>BOSS && spl[BOSS]!=null) {
+                this.boss=spl[BOSS].trim();
                 comparableData = getTerm(spl[BOSS]);
-            }else{
-                comparableData="";
+            }else {
+                this.boss = "";
+                comparableData = "";
             }
         }
 
         public int compareTo(Object o) {
             ExtendedLineString otherLine=(ExtendedLineString)o;
-            return this.comparableData.compareTo(otherLine.getComparableData());
+            return getComparableData().compareTo(otherLine.getComparableData());
         }
     }
 }
