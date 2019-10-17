@@ -1,6 +1,5 @@
 package com.termmed.terms;
 
-import com.sun.org.apache.bcel.internal.generic.InstructionComparator;
 import com.termmed.util.TClosure;
 
 import java.io.*;
