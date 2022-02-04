@@ -1,0 +1,16 @@
+singular plural
+miligramo	miligramos
+mililitro	mililitros
+gramo	gramos
+microgramo	microgramos
+unidad	unidades
+litro	litros
+hora	horas
+unidades internacionales	unidades internacionales
+megabecquerel	megabecquereles
+kilobecquerel	kilobecquereles
+milimol	milimoles
+nanogramo	nanogramos
+disparo	disparos
+miliequivalente	miliequivalentes
+unidad por millón	unidades por millón

@@ -21,7 +21,7 @@ public class HierarchyProvider implements I_dataProvider{
     HashSet<Long> dateFilterIds;
     boolean nofilter;
 
-    public HierarchyProvider(TClosure tClos, Long topConceptId, String rel, String description, String language, String descriptionSource,String releaseDateFilter) throws IOException {
+    public HierarchyProvider(TClosure tClos, Long topConceptId, String rel, String concreteRels, String description, String language, String descriptionSource,String releaseDateFilter) throws IOException {
 
         this.tClos=tClos;
         conceptsToProcess=new HashSet<Long>();
@@ -42,6 +42,7 @@ public class HierarchyProvider implements I_dataProvider{
 
         tClos=null;
         loadRelationships(rel);
+        loadConcreteRelationships(concreteRels);
         loadDescriptions(description);
         loadLanguage(language,descriptionSource);
         loadFSNSource(descriptionSource);
@@ -59,13 +60,13 @@ public class HierarchyProvider implements I_dataProvider{
         dateFilterIds =new HashSet<Long>();
         while ((line=br.readLine())!=null){
             spl=line.split("\t",-1);
-            if (spl[1].equals(releaseDateFilter) && spl[2].equals("1") && spl[6].equals(FSN)) {
+            if (spl[1].compareTo(releaseDateFilter)>0 && spl[2].equals("1") && spl[6].equals(FSN)) {
                 Long cid = Long.parseLong(spl[4]);
                 dateFilterIds.add(cid);
             }
         }
         br.close();
-        System.out.println("DataFilter size:" + dateFilterIds.size());
+//        System.out.println("DataFilter size:" + dateFilterIds.size());
     }
 
     private void loadFSNSource(String descriptionSource) throws IOException {
@@ -177,9 +178,9 @@ public class HierarchyProvider implements I_dataProvider{
             spl=line.split("\t",-1);
             if (spl[2].equals("1") && !spl[7].equals(IS_A.getConceptId())) {
 
-        if (spl[4].equals("782479008")){
-            boolean bstop=true;
-        }
+//        if (spl[4].equals("782479008")){
+//            boolean bstop=true;
+//        }
                 Long cid = Long.parseLong(spl[4]);
                 Concept concept = concepts.get(cid);
                 if (concept != null) {
@@ -200,7 +201,7 @@ public class HierarchyProvider implements I_dataProvider{
                         dest=concepts.get(destination);
 
                     }
-                    Relationship rel=new Relationship(concept,typeConcept,dest,Integer.parseInt(spl[6]));
+                    Relationship rel=new Relationship(concept,typeConcept,dest, null,Integer.parseInt(spl[6]));
                     concept.addRelationship(rel);
 
                 }
@@ -209,6 +210,47 @@ public class HierarchyProvider implements I_dataProvider{
         br.close();
     }
 
+    private void loadConcreteRelationships(String rels) throws IOException {
+        BufferedReader br=getReader(rels);
+
+        String[] spl;
+        String line;
+        br.readLine();
+
+        String destination;
+        while ((line=br.readLine())!=null){
+            spl=line.split("\t",-1);
+            if (spl[2].equals("1") && !spl[7].equals(IS_A.getConceptId())) {
+
+//        if (spl[4].equals("782479008")){
+//            boolean bstop=true;
+//        }
+                Long cid = Long.parseLong(spl[4]);
+                Concept concept = concepts.get(cid);
+                if (concept != null) {
+                    Long type=Long.parseLong(spl[7]);
+                    Concept typeConcept;
+                    if (!concepts.containsKey(type)){
+                        typeConcept=new Concept(spl[7]);
+                        concepts.put(type,new Concept(spl[7]));
+                    }else{
+                        typeConcept=concepts.get(type);
+                    };
+                    if (spl[5].startsWith("#")){
+                        destination=spl[5].substring(1);
+                    }else if (spl[5].startsWith("\"")) {
+                        destination = spl[5].substring(1,spl[5].length()-1);
+                    }else{
+                        destination=spl[5];
+                    }
+                    Relationship rel=new Relationship(concept,typeConcept,null, destination,Integer.parseInt(spl[6]));
+                    concept.addRelationship(rel);
+
+                }
+            }
+        }
+        br.close();
+    }
     public Concept getConcept(Long conceptId) {
         return concepts.get(conceptId);
     }
@@ -228,7 +270,7 @@ public class HierarchyProvider implements I_dataProvider{
             }
 
         }
-        System.out.println("Concepts to review:" + conceptsToProcess.size());
+//        System.out.println("Concepts to review:" + conceptsToProcess.size());
     }
 
     private BufferedReader getReader(String inFile) throws UnsupportedEncodingException, FileNotFoundException {

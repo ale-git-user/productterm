@@ -19,21 +19,23 @@ public class TermGenRunner {
 //        String language=args[3];
 //        String descriptionSource=args[4];
         String topConcept="373873005";
-        String rels="/Users/ar/Downloads/SnomedCT_InternationalRF2_PRODUCTION_20190731T120000Z/Snapshot/Terminology/sct2_Relationship_Snapshot_INT_20190731.txt";
-        String descriptions="/Users/ar/Downloads/Snapshot/Terminology/sct2_Description_SpanishExtensionSnapshot-es_INT_20191031.txt";
-        String language="/Users/ar/Downloads/Snapshot/Resources/der2_cRefset_LanguageSpanishExtensionSnapshotWithPrecomputedDefaults-es_INT_20191031.txt";
-        String descriptionSource="/Users/ar/Downloads/SnomedCT_InternationalRF2_PRODUCTION_20190731T120000Z/Snapshot/Terminology/sct2_Description_Snapshot-en_INT_20190731.txt";
+        String rels="C:\\Users\\carlo\\Downloads\\work\\xSnomedCT_InternationalRF2_MEMBER_20220131T120000Z\\Snapshot\\Terminology\\sct2_Relationship_Snapshot_INT_20220131.txt";
+        String concreteRels="C:\\Users\\carlo\\Downloads\\work\\xSnomedCT_InternationalRF2_MEMBER_20220131T120000Z\\Snapshot\\Terminology\\sct2_RelationshipConcreteValues_Snapshot_INT_20220131.txt";
+        String descriptions="C:\\Users\\carlo\\Downloads\\TSRP_ES_RELEASE_SNAPSHOT_20220430_3\\Snapshot\\Terminology\\sct2_Description_SpanishExtensionSnapshot-es_INT_20220430.txt";
+//        String language="C:\\Users\\carlo\\Downloads\\TSRP_ES_RELEASE_SNAPSHOT_20220430_2\\Snapshot\\Resources\\der2_cRefset_LanguageSpanishExtensionSnapshotWithPrecomputedDefaults-es_INT_20220430.txt";
+        String language="C:\\Users\\carlo\\Downloads\\TSRP_ES_RELEASE_SNAPSHOT_20220430_3\\Snapshot\\Refset\\Language\\der2_cRefset_LanguageSpanishExtensionSnapshot-es_INT_20220430.txt";
+        String descriptionSource="C:\\Users\\carlo\\Downloads\\work\\xSnomedCT_InternationalRF2_MEMBER_20220131T120000Z\\Snapshot\\Terminology\\sct2_Description_Snapshot-en_INT_20220131.txt";
         String langRefsetId="450828004";
         String newDescriptionModule="450829007";
-        String newDescriptionEffectiveTime="20190808";
+        String newDescriptionEffectiveTime="20220430";
         String langCode="es";
-        String linkedList="/Users/ar/Documents/Extensions/Spanish/worklists_201901.txt";
-        String dateFilter="20190731";
+        String linkedList="C:\\Extensions\\Core\\lists\\FSN_changes_202107-202201.txt";
+        String dateFilter="20210731";
 
-        I_dataProvider dp = DataProvider.initFromHierarchy(topConcept, rels, descriptions,language,descriptionSource, dateFilter);
+        I_dataProvider dp = DataProvider.initFromHierarchy(topConcept, rels, concreteRels, descriptions,language,descriptionSource, dateFilter);
         NewEsTermsGeneratorSDO tg=new NewEsTermsGeneratorSDO(dp,langRefsetId);
 
-        String outputFile="description_changes_201910.txt";
+        String outputFile="description_changes_202204.txt";
         try {
             tg.execute(outputFile, newDescriptionModule, newDescriptionEffectiveTime, langCode);
 
@@ -64,7 +66,7 @@ public class TermGenRunner {
         String header=br.readLine();
         BufferedWriter bw=getWriter(new File(output.getParent(),"columnAdded_" + output.getName()));
 
-        String columnHeader="In_Fsn_Changes_list";
+        String columnHeader="In_Fsn_Change_list";
         bw.append(header);
         bw.append("\t");
         bw.append(columnHeader);

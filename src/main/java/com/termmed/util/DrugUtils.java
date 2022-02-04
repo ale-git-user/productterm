@@ -153,16 +153,24 @@ public class DrugUtils implements RF2Constants {
 			//Load full locally cached object since we may be working with some minimally defined thing
 			Concept doseForm = DataProvider.get().getConcept(Long.parseLong(doseForms.get(0).getTarget().getConceptId()));
 			String doseFormStr;
-			if (isFSN) {
-				doseFormStr = SnomedUtils.deconstructFSN(doseForm.getFsn())[0];
-			} else {
-				doseFormStr = doseForm.getPreferredSynonym(langRefset).getTerm();
+
+			try {
+				if (isFSN) {
+
+					doseFormStr = SnomedUtils.deconstructFSN(doseForm.getFsn())[0];
+				} else {
+					doseFormStr = doseForm.getPreferredSynonym(langRefset).getTerm();
+				}
+			} catch (NullPointerException ex) {
+				System.out.println("Unable to retrieve translation for:\t" + doseForm.getConceptId() + "\t" + doseForm.getFsnSource());
+				doseFormStr = "XXXERRORXXX";
+
 			}
 			return SnomedUtils.deCapitalize(doseFormStr);
 		}
 	}
 	
-	public static  String getAttributeType(Concept concept, Concept type, boolean isFSN, String langRefset)  {
+	public static  String getAttributeType(Concept concept, Concept type, boolean isFSN, String langRefset) {
 		List<Relationship> rels = concept.getRelationships(CharacteristicType.STATED_RELATIONSHIP, type, ActiveState.ACTIVE);
 		Concept value;
 		if (rels.size() == 0) {
@@ -172,7 +180,7 @@ public class DrugUtils implements RF2Constants {
 			value = rels.get(0).getTarget();
 			for (Relationship rel : rels) {
 				if (!rel.getTarget().equals(value)) {
-					return "MULTIPLE DIFFERENT TYPE" + type.getFsn()  + "DETECTED";
+					return "MULTIPLE DIFFERENT TYPE" + type.getFsn() + "DETECTED";
 				}
 			}
 		} else {
@@ -182,10 +190,16 @@ public class DrugUtils implements RF2Constants {
 		//Load full locally cached object since we may be working with some minimally defined thing
 		value = DataProvider.get().getConcept(Long.parseLong(value.getConceptId()));
 		String valueStr;
-		if (isFSN) {
-			valueStr = SnomedUtils.deconstructFSN(value.getFsn())[0];
-		} else {
-			valueStr = value.getPreferredSynonym(langRefset).getTerm();
+		try {
+			if (isFSN) {
+				valueStr = SnomedUtils.deconstructFSN(value.getFsn())[0];
+			} else {
+				valueStr = value.getPreferredSynonym(langRefset).getTerm();
+			}
+		} catch (NullPointerException ex) {
+			System.out.println("Unable to retrieve translation for:\t" + value.getConceptId() + "\t" + value.getFsnSource());
+			valueStr = "XXXERRORXXX";
+
 		}
 		return SnomedUtils.deCapitalize(valueStr);
 	}

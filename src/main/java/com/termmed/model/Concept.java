@@ -180,7 +180,11 @@ public class Concept implements RF2Constants, Comparable<Concept>  {
 	
 	//Gets relationships that match the triple + group
 	public List<Relationship> getRelationships(Relationship r) {
-		return getRelationships(r.getCharacteristicType(), r.getType(), r.getTarget(), r.getGroupId(), ActiveState.ACTIVE);
+		if (r.getTarget() != null) {
+			return getRelationships(r.getCharacteristicType(), r.getType(), r.getTarget(), r.getGroupId(), ActiveState.ACTIVE);
+		}else{
+			return getRelationships(r.getCharacteristicType(), r.getType(), r.getValue(), r.getGroupId(), ActiveState.ACTIVE);
+		}
 	}
 	
 	public List<Relationship> getRelationships(Relationship r, ActiveState activeState) {
@@ -205,17 +209,6 @@ public class Concept implements RF2Constants, Comparable<Concept>  {
 		}
 		return matchingRels;
 	}
-	
-	public List<Relationship> getRelationships(CharacteristicType characteristicType, Concept type, Concept target, ActiveState activeState) {
-		List<Relationship> potentialMatches = getRelationships(characteristicType, type, activeState);
-		List<Relationship> matches = new ArrayList<Relationship>();
-		for (Relationship r : potentialMatches) {
-			if (r.getTarget().equals(target)) {
-				matches.add(r);
-			}
-		}
-		return matches;
-	}
 
 	public List<Relationship> getRelationships(CharacteristicType characteristicType, Concept type, Concept target, int groupId, ActiveState activeState) {
 		List<Relationship> potentialMatches = getRelationships(characteristicType, type, target, activeState);
@@ -228,6 +221,41 @@ public class Concept implements RF2Constants, Comparable<Concept>  {
 		return matches;
 	}
 	
+	public List<Relationship> getRelationships(CharacteristicType characteristicType, Concept type, Concept target, ActiveState activeState) {
+		List<Relationship> potentialMatches = getRelationships(characteristicType, type, activeState);
+		List<Relationship> matches = new ArrayList<Relationship>();
+		for (Relationship r : potentialMatches) {
+			if (r.getTarget()!=null) {
+				if (r.getTarget().equals(target)) {
+					matches.add(r);
+				}
+			}
+		}
+		return matches;
+	}
+	public List<Relationship> getRelationships(CharacteristicType characteristicType, Concept type, String target, int groupId, ActiveState activeState) {
+		List<Relationship> potentialMatches = getRelationships(characteristicType, type, target, activeState);
+		List<Relationship> matches = new ArrayList<Relationship>();
+		for (Relationship r : potentialMatches) {
+			if (r.getGroupId() == groupId) {
+				matches.add(r);
+			}
+		}
+		return matches;
+	}
+
+	public List<Relationship> getRelationships(CharacteristicType characteristicType, Concept type, String target, ActiveState activeState) {
+		List<Relationship> potentialMatches = getRelationships(characteristicType, type, activeState);
+		List<Relationship> matches = new ArrayList<Relationship>();
+		for (Relationship r : potentialMatches) {
+			if (r.getValue()!=null) {
+				if (r.getValue().equals(target)) {
+					matches.add(r);
+				}
+			}
+		}
+		return matches;
+	}
 	public List<Relationship> getRelationships(CharacteristicType characteristicType, Concept type, int groupId) {
 		List<Relationship> potentialMatches = getRelationships(characteristicType, type, ActiveState.ACTIVE);
 		List<Relationship> matches = new ArrayList<Relationship>();
@@ -356,6 +384,19 @@ public class Concept implements RF2Constants, Comparable<Concept>  {
 		statedRelationshipGroups = null;
 	}
 
+	public void addRelationship(Concept type, String target) {
+		Relationship r = new Relationship();
+		r.setActive(true);
+		r.setGroupId(0);
+		r.setCharacteristicType(CharacteristicType.STATED_RELATIONSHIP);
+		r.setSourceId(this.getConceptId());
+		r.setType(type);
+		r.setValue(target);
+		r.setModifier(Modifier.EXISTENTIAL);
+		relationships.add(r);
+		//Reset our cache of relationship groups
+		statedRelationshipGroups = null;
+	}
 	public boolean isLoaded() {
 		return isLoaded;
 	}

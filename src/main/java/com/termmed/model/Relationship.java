@@ -9,6 +9,7 @@ public class Relationship implements RF2Constants, Comparable<Relationship> {
 	private String relationshipId;
 	private Concept type;
 	private Concept target;
+	private String value;
 	private String sourceId;
 	private int groupId;
 	private CharacteristicType characteristicType;
@@ -28,10 +29,11 @@ public class Relationship implements RF2Constants, Comparable<Relationship> {
 	public Relationship() {
 	}
 
-	public Relationship(Concept source, Concept type, Concept target, int groupId) {
+	public Relationship(Concept source, Concept type, Concept target, String value, int groupId) {
 		this.type = type;
 		this.target = target;
 		this.source = source;
+		this.value=value;
 		if (source != null) {
 			this.sourceId = source.getConceptId();
 		}
@@ -44,9 +46,10 @@ public class Relationship implements RF2Constants, Comparable<Relationship> {
 		this.moduleId = SCTID_CORE_MODULE;
 	}
 
-	public Relationship(Concept type, Concept value) {
+	public Relationship(Concept type, Concept targetConcept, String value) {
 		this.type = type;
-		this.target = value;
+		this.target = targetConcept;
+		this.value=value;
 	}
 
 	public String getEffectiveTime() {
@@ -138,20 +141,33 @@ public class Relationship implements RF2Constants, Comparable<Relationship> {
 	}
 
 	public String toShortString() {
-		return "[S: " + sourceId + ", T: " + type.getConceptId() + ", D: " + target.getConceptId() + "]";
+		if (target!=null) {
+			return "[S: " + sourceId + ", T: " + type.getConceptId() + ", D: " + target.getConceptId() + "]";
+		}else{
+			return "[S: " + sourceId + ", T: " + type.getConceptId() + ", D: " + value + "]";
+		}
 	}
 	
 	public String toLongString() {
 		String charType = characteristicType.equals(CharacteristicType.STATED_RELATIONSHIP)?"S":"I";
 		String activeIndicator = this.isActive()?"":"*";
-		return "[" + activeIndicator +  charType + groupId + "] " + source + ": "+ type + " -> " + target;
+		if (target!=null) {
+			return "[" + activeIndicator + charType + groupId + "] " + source + ": " + type + " -> " + target;
+		}else{
+			return "[" + activeIndicator + charType + groupId + "] " + source + ": " + type + " -> " + value;
+
+		}
 	}
 	
 	@Override
 	public String toString() {
 		String charType = characteristicType.equals(CharacteristicType.STATED_RELATIONSHIP)?"S":"I";
 		String activeIndicator = this.isActive()?"":"*";
-		return "[" + activeIndicator +  charType + groupId + "] " + type + " -> " + target;
+		if (target!=null) {
+			return "[" + activeIndicator + charType + groupId + "] " + type + " -> " + target;
+		}else{
+			return "[" + activeIndicator + charType + groupId + "] " + type + " -> " + value;
+		}
 	}
 
 	@Override
@@ -178,8 +194,13 @@ public class Relationship implements RF2Constants, Comparable<Relationship> {
 		if (this.getRelationshipId() != null && rhs.getRelationshipId() != null) {
 			return this.getRelationshipId().equals(rhs.getRelationshipId());
 		}
-		//Otherwise compare type / target / group 
-		return (this.type.equals(rhs.type) && this.target.equals(rhs.target) && this.groupId == rhs.groupId);
+		//Otherwise compare type / target / group
+
+		if (target!=null) {
+			return (this.type.equals(rhs.type) && this.target.equals(rhs.target) && this.groupId == rhs.groupId);
+		}else{
+			return (this.type.equals(rhs.type) && this.value.equals(rhs.value) && this.groupId == rhs.groupId);
+		}
 	}
 	
 	public Relationship clone(String newSCTID) {
@@ -189,6 +210,7 @@ public class Relationship implements RF2Constants, Comparable<Relationship> {
 		clone.relationshipId = newSCTID; 
 		clone.moduleId = this.moduleId;
 		clone.target = this.target;
+		clone.value = this.value;
 		clone.active = this.active;
 		clone.effectiveTime = null; //New relationship is unpublished
 		clone.type = this.type;
@@ -208,14 +230,27 @@ public class Relationship implements RF2Constants, Comparable<Relationship> {
 			if (!this.getType().getConceptId().equals(other.getType().getConceptId())) {
 				return this.getType().getConceptId().compareTo(other.getType().getConceptId());
 			} else {
-				if (!this.getTarget().getConceptId().equals(other.getTarget().getConceptId())) {
-					return this.getTarget().getConceptId().compareTo(other.getTarget().getConceptId());
-				} else {
-					if (this.getGroupId() != other.getGroupId()) {
-						return ((Integer)this.getGroupId()).compareTo(other.getGroupId());
+				if (this.getTarget()!=null && other.getTarget()!=null) {
+					if (!this.getTarget().getConceptId().equals(other.getTarget().getConceptId())) {
+						return this.getTarget().getConceptId().compareTo(other.getTarget().getConceptId());
 					} else {
-						return 0;  //Equal in all four values
+						if (this.getGroupId() != other.getGroupId()) {
+							return ((Integer) this.getGroupId()).compareTo(other.getGroupId());
+						} else {
+							return 0;  //Equal in all four values
+						}
 					}
+				}else{
+					if (!this.getValue().equals(other.getValue())) {
+						return this.getValue().compareTo(other.getValue());
+					} else {
+						if (this.getGroupId() != other.getGroupId()) {
+							return ((Integer) this.getGroupId()).compareTo(other.getGroupId());
+						} else {
+							return 0;  //Equal in all four values
+						}
+					}
+
 				}
 			}
 		}
@@ -242,6 +277,14 @@ public class Relationship implements RF2Constants, Comparable<Relationship> {
 		if (source != null) {
 			this.sourceId = source.getConceptId();
 		}
+	}
+
+	public String getValue() {
+		return value;
+	}
+
+	public void setValue(String value) {
+		this.value = value;
 	}
 
 	public boolean isDeleted() {
@@ -280,6 +323,10 @@ public class Relationship implements RF2Constants, Comparable<Relationship> {
 	}
 
 	public boolean equalsTypeValue(Relationship rhs) {
-		return this.type.equals(rhs.type) && this.target.equals(rhs.target);
+		if (this.target!=null) {
+			return this.type.equals(rhs.type) && this.target.equals(rhs.target);
+		}else{
+			return this.type.equals(rhs.type) && this.value.equals(rhs.value);
+		}
 	}
 }

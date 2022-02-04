@@ -26,10 +26,10 @@ public class DataProvider {
         return currentFile;
     }
 
-    public static I_dataProvider initFromHierarchy(String conceptId, String rels,String descriptions, String language, String descriptionSource, String releaseDateFilter){
+    public static I_dataProvider initFromHierarchy(String conceptId, String rels, String concreteRels, String descriptions, String language, String descriptionSource, String releaseDateFilter){
         try {
             TClosure tClos=new TClosure(rels);
-            currentFile=new HierarchyProvider(tClos, Long.parseLong(conceptId), rels, descriptions, language, descriptionSource, releaseDateFilter);
+            currentFile=new HierarchyProvider(tClos, Long.parseLong(conceptId), rels, concreteRels, descriptions, language, descriptionSource, releaseDateFilter);
             return currentFile;
         } catch (IOException e) {
             e.printStackTrace();

@@ -320,6 +320,9 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
 //            semTag = SnomedUtils.deconstructFSN(c.getFsn())[1];
 //        }
         //Get all the ingredients in order
+        if (c.getConceptId().equals("1163374003")){
+            boolean bstop=true;
+        }
         Set<String> ingredients = getIngredientsWithStrengths(c, isFSN, langRefset, charType);
 
         if (ingredients.size()==0){
@@ -479,15 +482,15 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
             Concept boSS = SnomedUtils.getTarget(c, new Concept[] {HAS_BOSS}, r.getGroupId(), charType);
 
             //Are we adding the strength?
-            Concept strength = SnomedUtils.getTarget (c, new Concept[] {HAS_PRES_STRENGTH_VALUE, HAS_CONC_STRENGTH_VALUE}, r.getGroupId(), charType);
+            String strength = SnomedUtils.getConcreteTarget (c, new Concept[] {HAS_PRES_STRENGTH_VALUE, HAS_CONC_STRENGTH_VALUE}, r.getGroupId(), charType);
 
             //Are we adding the denominator strength and units?
             String denominatorStr = "";
 //            if (specifyDenominator || hasAttribute(c, HAS_PRES_STRENGTH_DENOM_VALUE) || hasAttribute(c, HAS_CONC_STRENGTH_DENOM_VALUE)) {
             if (specifyDenominator || hasAttribute(c, HAS_CONC_STRENGTH_DENOM_VALUE)) {
                 denominatorStr = "/";
-                Concept denStren = SnomedUtils.getTarget (c, new Concept[] {HAS_PRES_STRENGTH_DENOM_VALUE, HAS_CONC_STRENGTH_DENOM_VALUE}, r.getGroupId(), charType);
-                String denStrenStr = SnomedUtils.deconstructFSN(denStren.getFsn())[0];
+                String denStrenStr = SnomedUtils.getConcreteTarget (c, new Concept[] {HAS_PRES_STRENGTH_DENOM_VALUE, HAS_CONC_STRENGTH_DENOM_VALUE}, r.getGroupId(), charType);
+//                String denStrenStr = SnomedUtils.deconstructFSN(denStren.getFsn())[0];
                 boolean bsingl=true;
                 if (!denStrenStr.equals("1") || isFSN) {
                     denominatorStr += denStrenStr + " ";
@@ -513,7 +516,7 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
         return ingredients;
     }
 
-    private String formIngredientWithStrengthTerm(Concept ingredient, Concept boSS, Concept strength, Concept unit, String denominatorStr, boolean isFSN, String langRefset)  {
+    private String formIngredientWithStrengthTerm(Concept ingredient, Concept boSS, String strength, Concept unit, String denominatorStr, boolean isFSN, String langRefset)  {
         boolean separateBoSS = (boSS!= null && !boSS.equals(ingredient));
         String ingredientTerm="";
 
@@ -533,10 +536,9 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
         //Now add the Strength
         if (strength != null) {
 
-            String strengthTerm=SnomedUtils.deconstructFSN(strength.getFsn())[0];
+//            String strengthTerm=SnomedUtils.deconstructFSN(strength.getFsn())[0];
             try{
-                float strengthNumber=Float.parseFloat(strengthTerm);
-
+                float strengthNumber=Float.parseFloat(strength);
 
                 if (strengthNumber!= 1f){
                     bSingl=false;
@@ -545,7 +547,7 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
                 bSingl=false;
 //                System.out.println("Not as number:" + strengthTerm);
             }
-            ingredientTerm += " " + strengthTerm;
+            ingredientTerm += " " + strength;
         }
 
         if (unit != null) {
@@ -574,25 +576,25 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
         return unitTerm;
     }
 
-    private String getTermForConcat(Concept c, boolean useFSN, String langRefset)  {
+    private String getTermForConcat(Concept c, boolean useFSN, String langRefset) {
         Description desc;
         String term;
-        if (useFSN) {
-            desc = c.getFSNDescription();
-            if (desc==null){
-                System.out.println(c.getConceptId());
+        try {
+            if (useFSN) {
+                desc = c.getFSNDescription();
+                term = SnomedUtils.deconstructFSN(desc.getTerm())[0];
+            } else {
+                desc = c.getPreferredSynonym(langRefset);
+                term = desc.getTerm();
+            }
 
+            if (!desc.getCaseSignificance().equals(CaseSignificance.ENTIRE_TERM_CASE_SENSITIVE)) {
+                term = SnomedUtils.deCapitalize(term);
             }
-            term = SnomedUtils.deconstructFSN(desc.getTerm())[0];
-        } else {
-            desc = c.getPreferredSynonym(langRefset);
-            if (desc==null){
-                boolean bstop=true;
-            }
-            term = desc.getTerm();
-        }
-        if (!desc.getCaseSignificance().equals(CaseSignificance.ENTIRE_TERM_CASE_SENSITIVE)) {
-            term = SnomedUtils.deCapitalize(term);
+        } catch (NullPointerException ex) {
+            System.out.println("Unable to retrieve translation for:\t" + c.getConceptId() + "\t" + c.getFsnSource());
+            term = "XXXERRORXXX";
+
         }
         return term;
     }
@@ -604,9 +606,9 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
 
     private String getCdSuffix(Concept c, boolean isFSN, String langRefset) {
         String suffix="";
-        if ( c.getConceptId().equals("331164004")){
-            boolean bstop=true;
-        }
+//        if ( c.getConceptId().equals("331164004")){
+//            boolean bstop=true;
+//        }
         String unitOfPresentation = DrugUtils.getAttributeType(c, HAS_UNIT_OF_PRESENTATION, isFSN, langRefset);
         String doseForm = DrugUtils.getDosageForm(c, isFSN, langRefset);
         boolean isActuation = unitOfPresentation.equals("disparo");
@@ -667,27 +669,38 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
         addHeader(bw);
         boolean change;
         for(Long cid:dataProvider.getConceptToProcess()) {
+//            if (!cid.equals(1187593009L) && !cid.equals(1173982005L)){
+//                continue;
+//            }
+
             Concept concept = dataProvider.getConcept(cid);
-            if (!concept.getFsnSource().startsWith("concept code")) {
+            if (concept.getFsnSource().startsWith("concept code")) {
                 System.out.println("NO terms for because of:" + concept.getFsnSource() + ", cid:" + cid);
+//            }else{
+//                System.out.println("startsWith(concept code):" + concept.getFsnSource() + ", cid:" + cid);
+
             }
             if (!concept.getFsnSource().contains("(medicinal product)") && !concept.getFsnSource().contains("(medicinal product form)")
                     && !concept.getFsnSource().contains("(clinical drug)")
             ){
-                System.out.println("NO terms for:" + concept.getFsnSource() + ", cid:" + cid);
+//                c("NO terms for:" + concept.getFsnSource() + ", cid:" + cid);
                 continue;
             }
-            change = ensureDrugTermConforms(concept, true, CharacteristicType.STATED_RELATIONSHIP, newDescriptionModule, newDescriptionEffectiveTime, langCode);
-            if (change) {
-                change=ensureDrugTermConforms(concept, false, CharacteristicType.STATED_RELATIONSHIP, newDescriptionModule, newDescriptionEffectiveTime, langCode);
-                if (concept.getNewPreferredDescription() != null || concept.getNewFSNDescription() !=null) {
-                    addConceptToFile(bw, concept);
-                }else{
-                    System.out.println("NO generated terms for:" + cid.toString());
+//            try {
+                change = ensureDrugTermConforms(concept, true, CharacteristicType.STATED_RELATIONSHIP, newDescriptionModule, newDescriptionEffectiveTime, langCode);
+                if (change) {
+                    change = ensureDrugTermConforms(concept, false, CharacteristicType.STATED_RELATIONSHIP, newDescriptionModule, newDescriptionEffectiveTime, langCode);
+                    if (concept.getNewPreferredDescription() != null || concept.getNewFSNDescription() != null) {
+                        addConceptToFile(bw, concept);
+                    } else {
+//                        System.out.println("NO generated terms for:" + cid.toString());
+                    }
+                } else {
+//                    System.out.println("NO changes generated terms for:" + cid.toString());
                 }
-            }else{
-                System.out.println("NO changes generated terms for:" + cid.toString());
-            }
+//            }catch(NullPointerException ex){
+//                System.out.println("Incomplete translations for components of\t" + cid.toString() + "\t" + concept.getFsnSource());
+//            }
         }
         bw.close();
 //        for (String presDose:hashPresDose){

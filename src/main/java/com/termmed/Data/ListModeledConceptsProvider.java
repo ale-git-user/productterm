@@ -46,7 +46,9 @@ public class ListModeledConceptsProvider implements I_dataProvider{
             List<Relationship> rels = concept.getRelationships();
             for (Relationship rel:rels){
                 tempConcepts.put(Long.parseLong(rel.getType().getConceptId()),rel.getType());
-                tempConcepts.put(Long.parseLong(rel.getTarget().getConceptId()),rel.getTarget());
+                if (rel.getTarget()!=null) {
+                    tempConcepts.put(Long.parseLong(rel.getTarget().getConceptId()), rel.getTarget());
+                }
             }
         }
         concepts.putAll(tempConcepts);
@@ -184,7 +186,7 @@ public class ListModeledConceptsProvider implements I_dataProvider{
                         dest=concepts.get(destination);
 
                     }
-                    Relationship rel=new Relationship(concept,typeConcept,dest,Integer.parseInt(spl[6]));
+                    Relationship rel=new Relationship(concept,typeConcept,dest,null, Integer.parseInt(spl[6]));
                     concept.addRelationship(rel);
 
                 }

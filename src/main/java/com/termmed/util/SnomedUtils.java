@@ -198,6 +198,19 @@ public class SnomedUtils implements RF2Constants {
         }
         return null;
     }
+    public static String getConcreteTarget(Concept c, Concept[] types, int groupId, CharacteristicType charType){
+        for (Concept type : types) {
+            List<Relationship> rels = c.getRelationships(charType, type, groupId);
+            if (rels.size() > 1) {
+                System.out.println(c + " has multiple " + type + " in group " + groupId);
+            } else if (rels.size() == 1) {
+                //This might not be the full concept, so recover it fully from our loaded cache
+                return rels.get(0).getValue();
+            }
+        }
+        return null;
+    }
+
     public static Set<Concept> getTargets(Concept c, Concept[] types, CharacteristicType charType){
         Set<Concept> targets = new HashSet<>();
         for (Concept type : types) {

@@ -93,8 +93,14 @@ public class RelationshipGroup {
 		for (Relationship lhs : this.getRelationships()) {
 			//Can we find a matching relationship.  We're sure of source, so just check type and target
 			for (Relationship rhs : otherGroup.getRelationships()) {
-				if (lhs.getType().equals(rhs.getType()) && lhs.getTarget().equals(rhs.getTarget())) {
-					continue nextLhsRel;
+				if (lhs.getType().equals(rhs.getType())) {
+					if (lhs.getTarget() != null && rhs.getTarget() != null) {
+						if (lhs.getTarget().equals(rhs.getTarget())) {
+							continue nextLhsRel;
+						}
+					} else if (lhs.getValue().equals(rhs.getValue())) {
+						continue nextLhsRel;
+					}
 				}
 			}
 			return false;
