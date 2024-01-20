@@ -18,7 +18,7 @@ gránulos	no
 jeringa	si
 loción	no
 óvulo	si
-parche	si
+parche	no
 pasta	no
 pastilla	si
 polvo	no

@@ -7,11 +7,13 @@ import com.termmed.model.RF2Constants;
 import com.termmed.model.Relationship;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class SnomedUtils implements RF2Constants {
 
-
+    static Pattern pat=Pattern.compile(".*[/() ]{1}((ml)|(l)|(mg)|(g)|(ppm)|(mcg)|(cc)|(dl)|(h)|(hs)|(min)|(seg)|(ng))([/(), \\.]{1}|($)).*");
     public static String translateAcceptability (Acceptability a) {
         if (a.equals(Acceptability.PREFERRED)) {
             return "P";
@@ -205,7 +207,7 @@ public class SnomedUtils implements RF2Constants {
                 System.out.println(c + " has multiple " + type + " in group " + groupId);
             } else if (rels.size() == 1) {
                 //This might not be the full concept, so recover it fully from our loaded cache
-                return rels.get(0).getValue();
+                return rels.get(0).getValue().replaceAll("," , "").replace(".",",");
             }
         }
         return null;
@@ -227,6 +229,12 @@ public class SnomedUtils implements RF2Constants {
             if (!letter.equals(letter.toLowerCase())) {
                 return true;
             }
+        }
+
+        Matcher match = pat.matcher(term);
+
+        if (match.matches()) {
+            return true;
         }
         return false;
     }

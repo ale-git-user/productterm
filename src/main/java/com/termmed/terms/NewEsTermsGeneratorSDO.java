@@ -1,11 +1,9 @@
 package com.termmed.terms;
 
+import com.termmed.Data.DataProvider;
+import com.termmed.model.*;
 import org.apache.commons.lang.StringUtils;
 import com.termmed.Data.I_dataProvider;
-import com.termmed.model.Concept;
-import com.termmed.model.Description;
-import com.termmed.model.RF2Constants;
-import com.termmed.model.Relationship;
 import com.termmed.util.DrugUtils;
 import com.termmed.util.SnomedUtils;
 
@@ -33,6 +31,7 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
     private HashSet<String> hashPresDose;
     private boolean existsSyn;
     private HashSet<String> HashDoseF;
+    private HashMap<String,Substance> substances;
 
 
     public NewEsTermsGeneratorSDO(I_dataProvider dp, String langRefset) {
@@ -47,6 +46,7 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
         hashPresDose=new HashSet<String>();
         descCont=1;
         HashDoseF=new HashSet<String>();
+        substances=new HashMap<String, Substance>();
         try {
             loadPlurals();
             loadForEachAcceptance();
@@ -494,12 +494,12 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
                 boolean bsingl=true;
                 if (!denStrenStr.equals("1") || isFSN) {
                     denominatorStr += denStrenStr + " ";
-                    if (!denStrenStr.equals("1")) {
+                    if (!denStrenStr.equals("1") && !denStrenStr.equals("0,1") && !denStrenStr.equals("0,01") && !denStrenStr.equals("0,001")) {
                         bsingl = false;
                     }
                 }
                 Concept denUnit = SnomedUtils.getTarget (c, new Concept[] {HAS_PRES_STRENGTH_DENOM_UNIT, HAS_CONC_STRENGTH_DENOM_UNIT}, r.getGroupId(), charType);
-                String denUnitStr = getTermForConcat(denUnit, isFSN || neverAbbrev.contains(denUnit), langRefset);
+                String denUnitStr = getTermForConcat(denUnit, isFSN || neverAbbrev.contains(denUnit), langRefset, false);
                 if (bsingl ){
                     denominatorStr += denUnitStr;
                 }else {
@@ -522,11 +522,11 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
 
         //First the ingredient, with the BoSS first if different
         if (separateBoSS) {
-            ingredientTerm = getTermForConcat(boSS, isFSN, langRefset);
+            ingredientTerm = getTermForConcat(boSS, isFSN, langRefset, true);
             ingredientTerm += " (como ";
         }
 
-        ingredientTerm += getTermForConcat(ingredient, isFSN, langRefset);
+        ingredientTerm += getTermForConcat(ingredient, isFSN, langRefset, true);
 
         if (separateBoSS) {
             ingredientTerm += ")";
@@ -551,7 +551,7 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
         }
 
         if (unit != null) {
-            String unitTerm=getTermForConcat(unit, isFSN || neverAbbrev.contains(unit), langRefset);
+            String unitTerm=getTermForConcat(unit, isFSN || neverAbbrev.contains(unit), langRefset, false);
             if (bSingl ) {
                 ingredientTerm += " " + unitTerm;
             }else{
@@ -576,23 +576,45 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
         return unitTerm;
     }
 
-    private String getTermForConcat(Concept c, boolean useFSN, String langRefset) {
+    private String getTermForConcat(Concept c, boolean useFSN, String langRefset, boolean isIngredient) {
         Description desc;
         String term;
         try {
             if (useFSN) {
                 desc = c.getFSNDescription();
+                if (desc==null){
+                    boolean bstop=true;
+                }
                 term = SnomedUtils.deconstructFSN(desc.getTerm())[0];
+                if (isIngredient) {
+                    Substance substance=substances.get(c.getConceptId());
+                    if (substance==null){
+                        substance=new Substance(c.getConceptId(),term,null);
+                        substances.put(c.getConceptId(), substance);
+                    }else{
+                        substance.setFSN(term);
+                    }
+                }
             } else {
                 desc = c.getPreferredSynonym(langRefset);
                 term = desc.getTerm();
+                if (isIngredient) {
+                    Substance substance=substances.get(c.getConceptId());
+                    if (substance==null){
+                        substance=new Substance(c.getConceptId(),null,term);
+                        substances.put(c.getConceptId(), substance);
+                    }else{
+                        substance.setPref(term);
+                    }
+                }
+
             }
 
             if (!desc.getCaseSignificance().equals(CaseSignificance.ENTIRE_TERM_CASE_SENSITIVE)) {
                 term = SnomedUtils.deCapitalize(term);
             }
         } catch (NullPointerException ex) {
-            System.out.println("Unable to retrieve translation for:\t" + c.getConceptId() + "\t" + c.getFsnSource());
+            System.out.println("1-Unable to retrieve translation for:\t" + c.getConceptId() + "\t" + c.getFsnSource());
             term = "XXXERRORXXX";
 
         }
@@ -664,7 +686,7 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
         return ret;
     }
 
-    public void execute(String outputFile, String newDescriptionModule, String newDescriptionEffectiveTime, String langCode) throws IOException {
+    public void execute(String outputFile, String substanceOutputFile, String newDescriptionModule, String newDescriptionEffectiveTime, String langCode) throws IOException {
         BufferedWriter bw = getWriter(outputFile);
         addHeader(bw);
         boolean change;
@@ -675,7 +697,7 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
 
             Concept concept = dataProvider.getConcept(cid);
             if (concept.getFsnSource().startsWith("concept code")) {
-                System.out.println("NO terms for because of:" + concept.getFsnSource() + ", cid:" + cid);
+                System.out.println("NO terms because of:" + concept.getFsnSource() + ", cid:" + cid);
 //            }else{
 //                System.out.println("startsWith(concept code):" + concept.getFsnSource() + ", cid:" + cid);
 
@@ -702,6 +724,20 @@ public class NewEsTermsGeneratorSDO implements RF2Constants {
 //                System.out.println("Incomplete translations for components of\t" + cid.toString() + "\t" + concept.getFsnSource());
 //            }
         }
+        bw.flush();
+        bw.close();
+        bw = getWriter(substanceOutputFile);
+        bw.append("conceptId\tFSN\tPreferred\r\n");
+        for(String cid: substances.keySet()){
+            Substance substance=substances.get(cid);
+            bw.append(cid);
+            bw.append("\t");
+            bw.append(substance.getFSN());
+            bw.append("\t");
+            bw.append(substance.getPref());
+            bw.append("\r\n");
+        }
+        bw.flush();
         bw.close();
 //        for (String presDose:hashPresDose){
 //            System.out.println(presDose);

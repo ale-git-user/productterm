@@ -162,7 +162,7 @@ public class DrugUtils implements RF2Constants {
 					doseFormStr = doseForm.getPreferredSynonym(langRefset).getTerm();
 				}
 			} catch (NullPointerException ex) {
-				System.out.println("Unable to retrieve translation for:\t" + doseForm.getConceptId() + "\t" + doseForm.getFsnSource());
+				System.out.println("2-Unable to retrieve translation for:\t" + doseForm.getConceptId() + "\t" + doseForm.getFsnSource());
 				doseFormStr = "XXXERRORXXX";
 
 			}
@@ -197,7 +197,7 @@ public class DrugUtils implements RF2Constants {
 				valueStr = value.getPreferredSynonym(langRefset).getTerm();
 			}
 		} catch (NullPointerException ex) {
-			System.out.println("Unable to retrieve translation for:\t" + value.getConceptId() + "\t" + value.getFsnSource());
+			System.out.println("3-Unable to retrieve translation for:\t" + value.getConceptId() + "\t" + value.getFsnSource());
 			valueStr = "XXXERRORXXX";
 
 		}
